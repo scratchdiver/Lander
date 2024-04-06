@@ -1,0 +1,70 @@
+C+=======================================================================
+      SUBROUTINE TAQIO(IOFC, LUN, IEF, IPRI, IOSB, IPRL, IDSW)
+      INTEGER*2IOFC, LUN, IEF, IPRI
+      INTEGER*2IOSB(2), IPRL(6), IDSW
+C	Performs an input QIO to get characters from a terminal
+C	type-ahead buffer.  All parameters are exactly as for a
+C	normal QIO directive (except that none are optional). 
+C	This routine acts like a QIO for which an immediate 
+C	time-out has been specified, i.e. it only reads characters 
+C	already typed and returns.  If less than the desired # of 
+C	chars are in the type-ahead buffer, the IOSB return code 
+C	is set to IS.TMO.
+C
+C-=======================================================================
+Clocal copy of param list
+      INTEGER*2LCLPRL(6)
+C -----------------------------------------------------------------------
+Cdesired # to read
+      NWANT = IPRL(2)
+Cactual # in ta buffer
+      NTA = NTABUF(LUN)
+      NXPECT = MIN(NWANT, NTA)
+      IF (.NOT.(NTA .GT. 0)) GOTO 2000
+C	  there are some chars in ta buffer, issue a read for them
+        LCLPRL(1) = IPRL(1)
+        LCLPRL(2) = NXPECT
+        CALL WTQIO(IOFC, LUN, IEF, , IOSB, LCLPRL, IDSW)
+        GOTO 2010
+2000   CONTINUE
+C	  ta buffer is empty, fake a timed out read
+        IDSW = 1
+Csuccessful read of ...
+        IOSB(1) = 1
+Cno chars
+        IOSB(2) = 0
+C	if caller wanted more than available, & we read all in ta buf
+2010  CONTINUE
+      IF (.NOT.((IOSB(2) .LT. NWANT).AND.(IOSB(1) .EQ. 1))) GOTO 2020
+Cset "timed-out"
+        IOSB(1) = 2
+2020  CONTINUE
+      RETURN
+      END
+C+=======================================================================
+      INTEGER*2 FUNCTION NTABUF(LUN)
+      INTEGER*2LUN
+C	Returns the number of characters in the type-ahead buffer of the
+C	terminal assigned to LUN.  The type-ahead buffer is not altered.
+C	local event flag LUN is used.
+C
+C-=======================================================================
+Cget multiple characteristics
+Ccharacteristics buffer
+      BYTE BUF(2)
+Cta buf count code
+      DATA BUF/57, 0/
+      INTEGER*2IPRL(6)
+C # of bytes in buf to get
+      DATA IPRL(2)/2/
+      INTEGER*2IOSB(2)
+      BYTE IOS(2)
+      EQUIVALENCE(IOS, IOSB(1))
+C -----------------------------------------------------------------------
+      CALL GETADR(IPRL(1), BUF)
+Czero ta count
+      BUF(2) = 0
+      CALL WTQIO(1392, LUN, LUN, , IOSB, IPRL, IDSW)
+      NTABUF = BUF(2)
+      RETURN
+      END
