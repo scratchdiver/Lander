@@ -15,6 +15,11 @@ To build LANDER:
 
     LINK LANDER,INPOUT,TAQIO,TERMINAL,[1,1]F77FCS/LIB
 
+Or just run the build program script:
+
+    @BP
+
+
 To run LANDER:
 
 Start the Tektronix 4010 app from the linux command line:
